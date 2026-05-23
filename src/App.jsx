@@ -294,32 +294,57 @@ function App() {
   // =====================================
   const addExpense = async () => {
 
-    try {
-
-      const response = await axios.post(
-        "http://127.0.0.:8000/add-expense",
-        {
-          user_id: user.id,
-          category,
-          amount,
-          description,
-          expense_date: new Date().toISOString().split("T")[0]
-        }
-      )
-
-      alert(response.data.message)
-
-      refreshDashboard()
-
-      setCategory("")
-      setAmount("")
-      setDescription("")
-
-    } catch (error) {
-
-      console.log(error)
-    }
+  const expenseData = {
+    user_id: user.id,
+    category,
+    amount,
+    description,
+    expense_date: new Date().toISOString().split("T")[0]
   }
+
+  // OFFLINE MODE
+  if (!navigator.onLine) {
+
+    const offlineExpenses =
+      JSON.parse(localStorage.getItem("offlineExpenses")) || []
+
+    offlineExpenses.push(expenseData)
+
+    localStorage.setItem(
+      "offlineExpenses",
+      JSON.stringify(offlineExpenses)
+    )
+
+    alert("Offline: Expense saved locally!")
+
+    setCategory("")
+    setAmount("")
+    setDescription("")
+
+    return
+  }
+
+  // ONLINE MODE
+  try {
+
+    const response = await axios.post(
+      "http://192.168.1.6:8000/add-expense",
+      expenseData
+    )
+
+    alert(response.data.message)
+
+    refreshDashboard()
+
+    setCategory("")
+    setAmount("")
+    setDescription("")
+
+  } catch (error) {
+
+    console.log(error)
+  }
+}
 
   // =====================================
   // UPDATE EXPENSE
@@ -565,6 +590,49 @@ const generatePDF = () => {
   // =====================================
   // DASHBOARD
   // =====================================
+  useEffect(() => {
+
+  const syncOfflineExpenses = async () => {
+
+    const offlineExpenses =
+      JSON.parse(localStorage.getItem("offlineExpenses")) || []
+
+    if (offlineExpenses.length > 0 && navigator.onLine) {
+
+      for (const expense of offlineExpenses) {
+
+        try {
+
+          await axios.post(
+            "http://192.168.1.6:8000/add-expense",
+            expense
+          )
+
+        } catch (error) {
+
+          console.log(error)
+        }
+      }
+
+      localStorage.removeItem("offlineExpenses")
+
+      refreshDashboard()
+
+      alert("Offline expenses synced!")
+    }
+  }
+
+  window.addEventListener("online", syncOfflineExpenses)
+
+  syncOfflineExpenses()
+
+  return () => {
+    window.removeEventListener("online", syncOfflineExpenses)
+  }
+
+}, [])
+  
+  
   if (user) {
 
     return (
