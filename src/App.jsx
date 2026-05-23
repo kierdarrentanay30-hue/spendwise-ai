@@ -294,57 +294,57 @@ function App() {
   // =====================================
   const addExpense = async () => {
 
-  const expenseData = {
-    user_id: user.id,
-    category,
-    amount,
-    description,
-    expense_date: new Date().toISOString().split("T")[0]
+    const expenseData = {
+      user_id: user.id,
+      category,
+      amount,
+      description,
+      expense_date: new Date().toISOString().split("T")[0]
+    }
+
+    // OFFLINE MODE
+    if (!navigator.onLine) {
+
+      const offlineExpenses =
+        JSON.parse(localStorage.getItem("offlineExpenses")) || []
+
+      offlineExpenses.push(expenseData)
+
+      localStorage.setItem(
+        "offlineExpenses",
+        JSON.stringify(offlineExpenses)
+      )
+
+      alert("Offline: Expense saved locally!")
+
+      setCategory("")
+      setAmount("")
+      setDescription("")
+
+      return
+    }
+
+    // ONLINE MODE
+    try {
+
+      const response = await axios.post(
+        "http://192.168.1.6:8000/add-expense",
+        expenseData
+      )
+
+      alert(response.data.message)
+
+      refreshDashboard()
+
+      setCategory("")
+      setAmount("")
+      setDescription("")
+
+    } catch (error) {
+
+      console.log(error)
+    }
   }
-
-  // OFFLINE MODE
-  if (!navigator.onLine) {
-
-    const offlineExpenses =
-      JSON.parse(localStorage.getItem("offlineExpenses")) || []
-
-    offlineExpenses.push(expenseData)
-
-    localStorage.setItem(
-      "offlineExpenses",
-      JSON.stringify(offlineExpenses)
-    )
-
-    alert("Offline: Expense saved locally!")
-
-    setCategory("")
-    setAmount("")
-    setDescription("")
-
-    return
-  }
-
-  // ONLINE MODE
-  try {
-
-    const response = await axios.post(
-      "http://192.168.1.6:8000/add-expense",
-      expenseData
-    )
-
-    alert(response.data.message)
-
-    refreshDashboard()
-
-    setCategory("")
-    setAmount("")
-    setDescription("")
-
-  } catch (error) {
-
-    console.log(error)
-  }
-}
 
   // =====================================
   // UPDATE EXPENSE
@@ -387,7 +387,7 @@ function App() {
 
     try {
 
-      const response = await axio1s.delete(
+      const response = await axios.delete(
         `http://192.168.1.6:8000/delete-expense/${expenseId}`
       )
 
@@ -486,168 +486,166 @@ function App() {
   }
 
   // =====================================
-// PDF REPORT
-// =====================================
-const generatePDF = () => {
+  // PDF REPORT
+  // =====================================
+  const generatePDF = () => {
 
-  const doc = new jsPDF()
+    const doc = new jsPDF()
 
-  // HEADER
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(22)
+    // HEADER
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(22)
 
-  doc.text("SpendWise AI Financial Report", 20, 20)
+    doc.text("SpendWise AI Financial Report", 20, 20)
 
-  // USER INFO
-  doc.setFontSize(12)
-  doc.setFont("helvetica", "normal")
+    // USER INFO
+    doc.setFontSize(12)
+    doc.setFont("helvetica", "normal")
 
-  doc.text(`User: ${user.full_name}`, 20, 35)
-
-  doc.text(
-    `Generated: ${new Date().toLocaleDateString()}`,
-    20,
-    43
-  )
-
-  // LINE
-  doc.line(20, 50, 190, 50)
-
-  // TOTAL EXPENSES
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(16)
-
-  doc.text(
-    `Total Expenses: PHP ${totalExpenses}`,
-    20,
-    65
-  )
-
-  // EXPENSE HISTORY TITLE
-  doc.setFontSize(14)
-
-  doc.text("Expense History", 20, 85)
-
-  // TABLE HEADER
-  let y = 100
-
-  doc.setFontSize(12)
-
-  doc.setFont("helvetica", "bold")
-
-  doc.text("Category", 20, y)
-  doc.text("Amount", 90, y)
-  doc.text("Description", 140, y)
-
-  y += 8
-
-  doc.line(20, y, 190, y)
-
-  y += 10
-
-  // TABLE CONTENT
-  doc.setFont("helvetica", "normal")
-
-  expenses.forEach((expense) => {
-
-    doc.text(expense.category, 20, y)
+    doc.text(`User: ${user.full_name}`, 20, 35)
 
     doc.text(
-      `PHP ${expense.amount}`,
-      90,
-      y
+      `Generated: ${new Date().toLocaleDateString()}`,
+      20,
+      43
     )
 
+    // LINE
+    doc.line(20, 50, 190, 50)
+
+    // TOTAL EXPENSES
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+
     doc.text(
-      expense.description || "-",
-      140,
-      y
+      `Total Expenses: PHP ${totalExpenses}`,
+      20,
+      65
     )
+
+    // EXPENSE HISTORY TITLE
+    doc.setFontSize(14)
+
+    doc.text("Expense History", 20, 85)
+
+    // TABLE HEADER
+    let y = 100
+
+    doc.setFontSize(12)
+
+    doc.setFont("helvetica", "bold")
+
+    doc.text("Category", 20, y)
+    doc.text("Amount", 90, y)
+    doc.text("Description", 140, y)
+
+    y += 8
+
+    doc.line(20, y, 190, y)
 
     y += 10
 
-    // AUTO NEW PAGE
-    if (y > 270) {
+    // TABLE CONTENT
+    doc.setFont("helvetica", "normal")
 
-      doc.addPage()
+    expenses.forEach((expense) => {
 
-      y = 20
-    }
-  })
+      doc.text(expense.category, 20, y)
 
-  // FOOTER
-  doc.setFontSize(10)
+      doc.text(
+        `PHP ${expense.amount}`,
+        90,
+        y
+      )
 
-  doc.text(
-    "Generated by SpendWise AI",
-    20,
-    290
-  )
+      doc.text(
+        expense.description || "-",
+        140,
+        y
+      )
 
-  doc.save("SpendWise_Report.pdf")
-}
+      y += 10
+
+      // AUTO NEW PAGE
+      if (y > 270) {
+
+        doc.addPage()
+
+        y = 20
+      }
+    })
+
+    // FOOTER
+    doc.setFontSize(10)
+
+    doc.text(
+      "Generated by SpendWise AI",
+      20,
+      290
+    )
+
+    doc.save("SpendWise_Report.pdf")
+  }
 
   // =====================================
   // DASHBOARD
   // =====================================
   useEffect(() => {
 
-  const syncOfflineExpenses = async () => {
+    const syncOfflineExpenses = async () => {
 
-    const offlineExpenses =
-      JSON.parse(localStorage.getItem("offlineExpenses")) || []
+      const offlineExpenses =
+        JSON.parse(localStorage.getItem("offlineExpenses")) || []
 
-    if (offlineExpenses.length > 0 && navigator.onLine) {
+      if (offlineExpenses.length > 0 && navigator.onLine) {
 
-      for (const expense of offlineExpenses) {
+        for (const expense of offlineExpenses) {
 
-        try {
+          try {
 
-          await axios.post(
-            "http://192.168.1.6:8000/add-expense",
-            expense
-          )
+            await axios.post(
+              "http://192.168.1.6:8000/add-expense",
+              expense
+            )
 
-        } catch (error) {
+          } catch (error) {
 
-          console.log(error)
+            console.log(error)
+          }
         }
+
+        localStorage.removeItem("offlineExpenses")
+
+        refreshDashboard()
+
+        alert("Offline expenses synced!")
       }
-
-      localStorage.removeItem("offlineExpenses")
-
-      refreshDashboard()
-
-      alert("Offline expenses synced!")
     }
-  }
 
-  window.addEventListener("online", syncOfflineExpenses)
+    window.addEventListener("online", syncOfflineExpenses)
 
-  syncOfflineExpenses()
+    syncOfflineExpenses()
 
-  return () => {
-    window.removeEventListener("online", syncOfflineExpenses)
-  }
+    return () => {
+      window.removeEventListener("online", syncOfflineExpenses)
+    }
 
-}, [])
-  
-  
+  }, [])
+
+
   if (user) {
 
     return (
 
-      <div className={`min-h-screen flex ${
-        darkMode
+      <div className={`min-h-screen flex ${darkMode
           ? "bg-gray-900 text-white"
           : "bg-gray-100 text-black"
-      }`}>
+        }`}>
 
         {/* MOBILE MENU */}
         <button
-          className={`md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg ${
-            sidebarOpen ? "hidden" : "block"
-          }`}
+          className={`md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg ${sidebarOpen ? "hidden" : "block"
+            }`}
           onClick={() => setSidebarOpen(true)}
         >
           <Menu size={24} />
@@ -956,11 +954,10 @@ const generatePDF = () => {
                           ? updateExpense
                           : addExpense
                       }
-                      className={`text-white p-3 rounded-lg ${
-                        editingExpenseId
+                      className={`text-white p-3 rounded-lg ${editingExpenseId
                           ? "bg-yellow-600"
                           : "bg-blue-600"
-                      }`}
+                        }`}
                     >
 
                       {
